@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-body p-5">
+                    <h1 class="text-center mb-4">Create Account</h1>
+                    
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }}">{{ message }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <form method="POST" action="{{ url_for('main.register') }}" class="needs-validation" novalidate>
+                        <div class="mb-3">
+                            <label class="form-label">Account Type</label>
+                            <div class="d-flex gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="user_type" id="customer" value="customer" checked>
+                                    <label class="form-check-label" for="customer">Customer</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="user_type" id="manager" value="manager">
+                                    <label class="form-check-label" for="manager">Manager</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="first_name" class="form-label">First Name</label>
+                                <input type="text" class="form-control" id="first_name" name="first_name" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="last_name" class="form-label">Last Name</label>
+                                <input type="text" class="form-control" id="last_name" name="last_name" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email address</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="phone" class="form-label">Phone Number</label>
+                            <input type="tel" class="form-control" id="phone" name="phone" required>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="password" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="confirm_password" class="form-label">Confirm Password</label>
+                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                            </div>
+                        </div>
+
+                        <!-- Customer-specific fields -->
+                        <div id="customer-fields">
+                            <div class="mb-3">
+                                <label for="birth_date" class="form-label">Birth Date</label>
+                                <input type="date" class="form-control" id="birth_date" name="birth_date">
+                            </div>
+                        </div>
+
+                        <!-- Manager-specific fields -->
+                        <div id="manager-fields" style="display: none;">
+                            <div class="mb-3">
+                                <label for="position" class="form-label">
+                                    <i class="fas fa-briefcase"></i>
+                                    Position <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="position" name="position" required>
+                                    <option value="">Select Position</option>
+                                    <option value="General Manager">General Manager</option>
+                                    <option value="Operations Manager">Operations Manager</option>
+                                    <option value="Assistant Manager">Assistant Manager</option>
+                                    <option value="Department Manager">Department Manager</option>
+                                    <option value="Branch Manager">Branch Manager</option>
+                                    <option value="Store Manager">Store Manager</option>
+                                    <option value="Regional Manager">Regional Manager</option>
+                                    <option value="Custom">Other (Custom Position)</option>
+                                </select>
+                                <input type="text" class="form-control mt-2" id="custom_position" name="custom_position"
+                                    placeholder="Enter custom position" style="display: none;">
+                            </div>
+                            <div class="mb-3">
+                                <label for="branch_id" class="form-label">Select Branch</label>
+                                <select class="form-select" id="branch_id" name="branch_id" required>
+                                    <option value="">Choose a branch...</option>
+                                    {% for branch in branches %}
+                                        <option value="{{ branch.branch_id }}">{{ branch.branch_name }} - {{ branch.location }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">Create Account</button>
+                        </div>
+                    </form>
+
+                    <div class="text-center mt-4">
+                        <p class="mb-0">Already have an account? <a href="{{ url_for('main.login') }}">Sign in here</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const userTypeRadios = document.querySelectorAll('input[name="user_type"]');
+    const customerFields = document.getElementById('customer-fields');
+    const managerFields = document.getElementById('manager-fields');
+    const branchSelect = document.getElementById('branch_id');
+    const positionSelect = document.getElementById('position');
+    const customPositionInput = document.getElementById('custom_position');
+    const birthDateCustomer = document.getElementById('birth_date');
+
+    function toggleFields() {
+        const selectedType = document.querySelector('input[name="user_type"]:checked').value;
+        if (selectedType === 'customer') {
+            customerFields.style.display = 'block';
+            managerFields.style.display = 'none';
+            branchSelect.required = false;
+            positionSelect.required = false;
+            birthDateCustomer.required = true;
+        } else {
+            customerFields.style.display = 'none';
+            managerFields.style.display = 'block';
+            branchSelect.required = true;
+            positionSelect.required = true;
+            birthDateCustomer.required = false;
+        }
+    }
+
+    // Handle custom position toggle
+    positionSelect.addEventListener('change', function() {
+        if (this.value === 'Custom') {
+            customPositionInput.style.display = 'block';
+            customPositionInput.required = true;
+        } else {
+            customPositionInput.style.display = 'none';
+            customPositionInput.required = false;
+            customPositionInput.value = '';
+        }
+    });
+
+    userTypeRadios.forEach(radio => {
+        radio.addEventListener('change', toggleFields);
+    });
+
+    // Initial state
+    toggleFields();
+});
+</script>
+{% endblock %}

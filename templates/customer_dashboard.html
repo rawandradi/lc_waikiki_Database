@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Welcome Section -->
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-5 mb-3">My Account</h1>
+            <p class="lead">Welcome back, {{ customer.first_name }} {{ customer.last_name }}</p>
+        </div>
+    </div>
+
+    <!-- Account Overview -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Account Information</h5>
+                    <ul class="list-unstyled">
+                        <li><strong>Email:</strong> {{ customer.email }}</li>
+                        <li><strong>Phone:</strong> {{ customer.phone }}</li>
+                        <li><strong>Member Since:</strong> {{ customer.registration_date }}</li>
+                    </ul>
+                    <a href="#" class="btn btn-outline-primary btn-sm">Edit Profile</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Recent Orders</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Date</th>
+                                    <th>Total</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in recent_orders %}
+                                <tr>
+                                    <td>#{{ order.order_id }}</td>
+                                    <td>{{ order.order_date }}</td>
+                                    <td>${{ order.total_amount }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ order.status_color }}">
+                                            {{ order.status }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="#" class="btn btn-sm btn-outline-primary">View Details</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shopping Features -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="#" class="btn btn-outline-primary">
+                            <i class="bi bi-shop me-2"></i>Browse Products
+                        </a>
+                        <a href="#" class="btn btn-outline-primary">
+                            <i class="bi bi-cart me-2"></i>View Cart
+                        </a>
+                        <a href="#" class="btn btn-outline-primary">
+                            <i class="bi bi-heart me-2"></i>Wishlist
+                        </a>
+                        <a href="#" class="btn btn-outline-primary">
+                            <i class="bi bi-star me-2"></i>My Reviews
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Recommended Products</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for product in recommended_products %}
+                        <div class="col-6 mb-3">
+                            <div class="card h-100">
+                                <img src="{{ product.image_url }}" class="card-img-top" alt="{{ product.name }}">
+                                <div class="card-body">
+                                    <h6 class="card-title">{{ product.name }}</h6>
+                                    <p class="card-text text-primary">${{ product.price }}</p>
+                                    <a href="#" class="btn btn-sm btn-outline-primary">Add to Cart</a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loyalty Program -->
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Loyalty Program</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h6>Your Points: {{ loyalty_points }}</h6>
+                            <div class="progress mb-3">
+                                <div class="progress-bar bg-primary" role="progressbar" 
+                                     data-width="{{ (loyalty_points / next_level_points) * 100 }}"
+                                     aria-valuenow="{{ loyalty_points }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="{{ next_level_points }}"></div>
+                            </div>
+                            <p class="text-muted">
+                                {{ next_level_points - loyalty_points }} points until next level
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Available Rewards</h6>
+                            <div class="list-group">
+                                {% for reward in available_rewards %}
+                                <a href="#" class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">{{ reward.name }}</h6>
+                                        <small>{{ reward.points }} points</small>
+                                    </div>
+                                    <p class="mb-1">{{ reward.description }}</p>
+                                </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const progressBar = document.querySelector('.progress-bar');
+    if (progressBar) {
+        progressBar.style.width = progressBar.dataset.width + '%';
+    }
+});
+</script>
+{% endblock %} 

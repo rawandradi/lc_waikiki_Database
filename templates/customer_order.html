@@ -1,0 +1,475 @@
+{% extends "main_dashboard.html" %}
+{% block extra_css %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/tabels.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+{% endblock %}
+
+{% block content %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-messages">
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }}">
+        <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'error' %}exclamation-triangle{% else %}info-circle{% endif %}"></i>
+        {{ message }}
+        <button class="close-alert" onclick="this.parentElement.remove()">&times;</button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<div class="page-header">
+    <h1><i class="fas fa-receipt"></i> Customer Orders</h1>
+</div>
+
+<div class="container">
+    <div class="table-container">
+        {% if orders %}
+        <!-- Search Form -->
+        <form method="get" action="{{ url_for('customer_orders') }}">
+            <input type="text" name="search" placeholder="Search orders..." value="{{ search_query }}">
+            <button type="submit">Search</button>
+            {% if search_query %}
+            <a href="{{ url_for('customer_orders') }}">Clear</a>
+            {% endif %}
+        </form>
+
+        <!-- Orders Table -->
+        <table class="data-table" id="ordersTable">
+            <thead>
+                <tr>
+                    <th onclick="sortTable(0)">#<i class="fas fa-sort sort-icon"></i></th>
+                    <th onclick="sortTable(1)">Customer<i class="fas fa-sort sort-icon"></i></th>
+                    <th onclick="sortTable(2)">Address ID<i class="fas fa-sort sort-icon"></i></th>
+                    <th onclick="sortTable(3)">Order Date<i class="fas fa-sort sort-icon"></i></th>
+                    <th onclick="sortTable(4)">Status<i class="fas fa-sort sort-icon"></i></th>
+                    <th onclick="sortTable(5)">Total<i class="fas fa-sort sort-icon"></i></th>
+                    <th onclick="sortTable(6)">Payment Method<i class="fas fa-sort sort-icon"></i></th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td data-label="ID">#{{ order.order_id }}</td>
+                    <td data-label="Customer">
+                        {% if order.customer_name %}
+                        {{ order.customer_name }} (ID: {{ order.customer_id }})
+                        {% else %}
+                        Customer ID: {{ order.customer_id }}
+                        {% endif %}
+                    </td>
+                    <td data-label="Address ID">{{ order.address_id }}</td>
+                    <td data-label="Order Date">{{ order.order_date }}</td>
+                    <td data-label="Status">{{ order.status }}</td>
+                    <td data-label="Total">${{ "%.2f"|format(order.totalAmount) }}</td>
+                    <td data-label="Payment">{{ order.payment_method }}</td>
+                    <td class="actions" data-label="Actions">
+                        <div class="dropdown">
+                            <button class="btn-icon menu" onclick="toggleMenu(this)">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <div class="dropdown-content">
+                                <a href="#" onclick="viewOrderItems({{ order.order_id }})">
+                                    <i class="fas fa-eye"></i> View Items
+                                </a>
+                                <a href="#" onclick="editOrder({{ order.order_id }})">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                                <a href="#" onclick="deleteOrder({{ order.order_id }})">
+                                    <i class="fas fa-trash"></i> Delete
+                                </a>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <button class="btn btn-primary" onclick="openAddOrderForm()">
+            <i class="fas fa-plus"></i> Add Order
+        </button>
+        {% else %}
+        <!-- Empty State -->
+        <div class="empty-state">
+            <div class="empty-icon">
+                <i class="fas fa-receipt"></i>
+            </div>
+            <h3>No Orders Found</h3>
+            <p>Start by adding your first customer order.</p>
+            <button class="btn btn-primary" onclick="openAddOrderForm()">
+                <i class="fas fa-plus"></i> Add First Order
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Enhanced Add Order Modal with Order Items Section -->
+<div id="addOrderModal" class="modal" style="display: none;">
+    <div class="modal-content large-modal">
+        <div class="modal-header">
+            <h2><i class="fas fa-plus"></i> Add New Order</h2>
+            <button class="close-btn" onclick="closeAddOrderForm()">&times;</button>
+        </div>
+        <form id="addOrderForm" method="post" action="{{ url_for('add_order_route') }}">
+            <div class="modal-body">
+                <!-- Order Details Section -->
+                <div class="section-header">
+                    <h3><i class="fas fa-info-circle"></i> Order Details</h3>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="add_customer_id">Customer <span class="required">*</span></label>
+                        <select id="add_customer_id" name="customer_id" required>
+                            <option value="">-- Select a customer --</option>
+                            {% for customer in customers %}
+                            <option value="{{ customer.customer_id }}">
+                                {{ customer.first_name }} {{ customer.last_name }} ({{ customer.email }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="add_address_id">Address <span class="required">*</span></label>
+                        <select id="add_address_id" name="address_id" required>
+                            <option value="">-- Select an address --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="add_order_date">Order Date <span class="required">*</span></label>
+                        <input type="date" id="add_order_date" name="order_date" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="add_status">Status <span class="required">*</span></label>
+                        <select id="add_status" name="status" required>
+                            <option value="">Select Status</option>
+                            <option value="Pending" selected>Pending</option>
+                            <option value="Processing">Processing</option>
+                            <option value="Shipped">Shipped</option>
+                            <option value="Delivered">Delivered</option>
+                            <option value="Cancelled">Cancelled</option>
+                            <option value="Returned">Returned</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="add_payment_method">Payment Method <span class="required">*</span></label>
+                        <select id="add_payment_method" name="payment_method" required>
+                            <option value="">Select Payment Method</option>
+                            <option value="Credit Card">Credit Card</option>
+                            <option value="Debit Card">Debit Card</option>
+                            <option value="PayPal">PayPal</option>
+                            <option value="Bank Transfer">Bank Transfer</option>
+                            <option value="Cash on Delivery">Cash on Delivery</option>
+                            <option value="Apple Pay">Apple Pay</option>
+                            <option value="Google Pay">Google Pay</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="add_totalAmount">Total Amount <span class="required">*</span></label>
+                        <input type="number" id="add_totalAmount" name="totalAmount" required min="0" step="0.01" readonly>
+                        <small class="form-text">Total will be calculated automatically from order items</small>
+                    </div>
+                </div>
+
+                <!-- Order Items Section -->
+                <div class="section-header">
+                    <h3><i class="fas fa-list"></i> Order Items</h3>
+                </div>
+
+                <!-- Add Item Form -->
+                <div class="add-item-section" >
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="add_product_id_for_item">Product</label>
+                            <select id="add_product_id_for_item">
+                                <option value="">-- Select a product --</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="add_item_quantity_for_order">Quantity</label>
+                            <input type="number" id="add_item_quantity_for_order" min="1" step="1" placeholder="1">
+                        </div>
+
+                        <div class="form-group align-end">
+                            <button type="button" class="btn btn-secondary" onclick="addOrderItem()">
+                                <i class="fas fa-plus"></i> Add Item
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Order Items Table -->
+                <div class="order-items-table">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Quantity</th>
+                                <th>Subtotal</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orderItemsTableBody">
+                            <!-- Items will be added here dynamically -->
+                        </tbody>
+                    </table>
+                    
+                    <!-- Empty State -->
+                    <div id="orderItemsEmptyState" class="empty-state-small">
+                        <p><i class="fas fa-box-open"></i> No items added yet. Add products to the order above.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeAddOrderForm()">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Create Order
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Order Modal -->
+<div id="editOrderModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fas fa-edit"></i> Edit Order</h2>
+            <button class="close-btn" onclick="closeEditForm()">&times;</button>
+        </div>
+        <form id="editOrderForm" method="post">
+            <input type="hidden" id="edit_order_id" name="order_id">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="edit_customer_id">Customer <span class="required">*</span></label>
+                    <select id="edit_customer_id" name="customer_id" required>
+                        <option value="">-- Select a customer --</option>
+                        {% for customer in customers %}
+                        <option value="{{ customer.customer_id }}">
+                            {{ customer.first_name }} {{ customer.last_name }} ({{ customer.email }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit_address_id">Address <span class="required">*</span></label>
+                    <select id="edit_address_id" name="address_id" required>
+                        <option value="">-- Select an address --</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit_order_date">Order Date <span class="required">*</span></label>
+                    <input type="date" id="edit_order_date" name="order_date" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit_status">Status <span class="required">*</span></label>
+                    <select id="edit_status" name="status" required>
+                        <option value="">Select Status</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Processing">Processing</option>
+                        <option value="Shipped">Shipped</option>
+                        <option value="Delivered">Delivered</option>
+                        <option value="Cancelled">Cancelled</option>
+                        <option value="Returned">Returned</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit_totalAmount">Total Amount <span class="required">*</span></label>
+                    <input type="number" id="edit_totalAmount" name="totalAmount" required min="0" step="0.01">
+                </div>
+
+                <div class="form-group">
+                    <label for="edit_payment_method">Payment Method <span class="required">*</span></label>
+                    <select id="edit_payment_method" name="payment_method" required>
+                        <option value="">Select Payment Method</option>
+                        <option value="Credit Card">Credit Card</option>
+                        <option value="Debit Card">Debit Card</option>
+                        <option value="PayPal">PayPal</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                        <option value="Cash on Delivery">Cash on Delivery</option>
+                        <option value="Apple Pay">Apple Pay</option>
+                        <option value="Google Pay">Google Pay</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeEditForm()">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Update Order
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fas fa-trash"></i> Delete Order</h2>
+            <button class="close-btn" onclick="closeDeleteConfirm()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete this order? This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeDeleteConfirm()">Cancel</button>
+            <form id="deleteForm" method="post" style="display: inline;">
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-trash"></i> Delete Order
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Order Items Modal -->
+<div id="orderItemsModal" class="modal" style="display: none;">
+    <div class="modal-content large-modal">
+        <div class="modal-header">
+            <h2><i class="fas fa-list"></i> Order Items</h2>
+            <button class="close-btn" onclick="closeOrderItemsModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Item ID</th>
+                        <th>Product</th>
+                        <th>Quantity</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="orderItemsTableBody">
+                    <!-- Order items will be populated here -->
+                </tbody>
+            </table>
+            <input type="hidden" id="orderIdForItems">
+            <button class="btn btn-primary" onclick="openAddOrderItemForm()">
+                <i class="fas fa-plus"></i> Add Item
+            </button>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeOrderItemsModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Order Item Modal -->
+<div id="addOrderItemModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fas fa-plus"></i> Add Order Item</h2>
+            <button class="close-btn" onclick="closeAddOrderItemForm()">&times;</button>
+        </div>
+        <form id="addOrderItemForm">
+            <div class="modal-body">
+                <input type="hidden" name="order_id" id="add_item_order_id">
+
+                <div class="form-group">
+                    <label for="add_product_id">Product <span class="required">*</span></label>
+                    <select id="add_product_id" name="product_id" required>
+                        <option value="">-- Select a product --</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="add_item_quantity">Quantity <span class="required">*</span></label>
+                    <input type="number" id="add_item_quantity" name="quantity" required min="1" step="1">
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeAddOrderItemForm()">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Add Item
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Order Item Modal -->
+<div id="editOrderItemModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fas fa-edit"></i> Edit Order Item</h2>
+            <button class="close-btn" onclick="closeEditOrderItemForm()">&times;</button>
+        </div>
+        <form id="editOrderItemForm">
+            <div class="modal-body">
+                <input type="hidden" id="edit_order_item_id" name="order_item_id">
+                <input type="hidden" id="edit_item_order_id" name="order_id">
+
+                <div class="form-group">
+                    <label for="edit_item_product_id">Product <span class="required">*</span></label>
+                    <select id="edit_item_product_id" name="product_id" required>
+                        <option value="">-- Select a product --</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit_item_quantity">Quantity <span class="required">*</span></label>
+                    <input type="number" id="edit_item_quantity" name="quantity" required min="1" step="1">
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeEditOrderItemForm()">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Update Item
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+
+
+<!-- Delete Order Item Confirmation Modal -->
+<div id="deleteOrderItemModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fas fa-trash"></i> Delete Order Item</h2>
+            <button class="close-btn" onclick="closeDeleteOrderItemConfirm()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete this order item? This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeDeleteOrderItemConfirm()">Cancel</button>
+            <form id="deleteOrderItemForm" method="post" style="display: inline;">
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-trash"></i> Delete Item
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/customer_order.js') }}"></script>
+{% endblock %}

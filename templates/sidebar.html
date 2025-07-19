@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sidebar</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+    <nav class="sidebar">
+        <ul class="nav-menu">
+            <li class="nav-item {{ 'active' if request.path == '/overview' else '' }}">
+                <a href="/overview">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Overview</span>
+                </a>
+            </li>
+
+            <li class="nav-item {{ 'active' if request.path == '/customer' else '' }}">
+                <a href="/customer">
+                    <i class="fas fa-users"></i>
+                    <span>Customers</span>
+                </a>
+            </li>
+
+            <li class="nav-item {{ 'active' if request.path == '/supplier' else '' }}">
+                <a href="/supplier">
+                    <i class="fas fa-truck"></i>
+                    <span>Suppliers</span>
+                </a>
+            </li>
+
+            <li class="nav-item {{ 'active' if request.path == '/product' else '' }}">
+                <a href="/product">
+                    <i class="fas fa-box"></i>
+                    <span>Products</span>
+                </a>
+            </li>
+
+            <li class="nav-item {{ 'active' if request.path == '/customer_order' else '' }}">
+                <a href="/customer_order">
+                    <i class="fas fa-warehouse"></i>
+                    <span>Customer Orders</span>
+                </a>
+            </li>
+
+            <li class="nav-item {{ 'active' if request.path == '/category' else '' }}">
+                <a href="/category">
+                    <i class="fas fa-tags"></i>
+                    <span>Categories</span>
+                </a>
+            </li>
+
+            <li class="nav-item {{ 'active' if request.path == '/staff' else '' }}">
+                <a href="/staff">
+                    <i class="fas fa-user-tie"></i>
+                    <span>Staff</span>
+                </a>
+            </li>
+
+            <li class="nav-item {{ 'active' if request.path == '/branch' else '' }}">
+                <a href="/branch">
+                    <i class="fas fa-code-branch"></i>
+                    <span>Branches</span>
+                </a>
+            </li>
+
+            <li class="nav-item {{ 'active' if request.path == '/Manager_orders' else '' }}">
+                <a href="/Manager_orders">
+                    <i class="fas fa-warehouse"></i>
+                    <span>Manager Orders</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="{{ url_for('main.logout') }}">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </li>
+          
+        </ul>
+    </nav>
+
+    <script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
+</body>
+
+</html>

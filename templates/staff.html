@@ -1,0 +1,532 @@
+{% extends "main_dashboard.html" %}
+{% block extra_css %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/tabels.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+{% endblock %}
+
+{% block content %}
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-messages">
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }}">
+        <i
+            class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'error' %}exclamation-triangle{% else %}info-circle{% endif %}"></i>
+        {{ message }}
+        <button class="close-alert" onclick="this.parentElement.remove()">×</button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<!-- Page Header -->
+<div class="page-header">
+    <h1><i class="fas fa-users"></i> Staff Management</h1>
+    <div class="header-actions">
+    </div>
+</div>
+
+<div class="container">
+    <!-- Staff Type Filter Tabs -->
+    <div class="staff-type-tabs">
+        <button class="tab-button {% if staff_type == 'all' %}active{% endif %}" onclick="filterStaffType('all')">
+            <i class="fas fa-users"></i> All Staff
+        </button>
+        <button class="tab-button {% if staff_type == 'worker' %}active{% endif %}" onclick="filterStaffType('worker')">
+            <i class="fas fa-user"></i> Workers
+        </button>
+        <button class="tab-button {% if staff_type == 'manager' %}active{% endif %}"
+            onclick="filterStaffType('manager')">
+            <i class="fas fa-user-tie"></i> Managers
+        </button>
+    </div>
+
+    <!-- Staff Table -->
+    <div class="table-container">
+        {% if staff_list %}
+        <form method="get" action="{{ url_for('staff_management') }}">
+            <input type="hidden" name="type" value="{{ staff_type }}">
+            <input type="text" name="search" placeholder="Search staff..." value="{{ search_query }}">
+            <button type="submit">Search</button>
+            {% if search_query %}
+            <a href="{{ url_for('staff_management', type=staff_type) }}">Clear</a>
+            {% endif %}
+        </form>
+
+        <table class="data-table" id="staffTable">
+            <thead>
+                <tr>
+                    <th onclick="sortTable(0)">
+                        <span>ID</span>
+                        <i class="fas fa-sort sort-icon"></i>
+                    </th>
+                    <th onclick="sortTable(1)">
+                        <span>Name</span>
+                        <i class="fas fa-sort sort-icon"></i>
+                    </th>
+                    <th onclick="sortTable(2)">
+                        <span>Position</span>
+                        <i class="fas fa-sort sort-icon"></i>
+                    </th>
+                    <th onclick="sortTable(3)">
+                        <span>Type</span>
+                        <i class="fas fa-sort sort-icon"></i>
+                    </th>
+                    <th onclick="sortTable(4)">
+                        <span>Salary</span>
+                        <i class="fas fa-sort sort-icon"></i>
+                    </th>
+                    <th onclick="sortTable(5)">
+                        <span>Contact</span>
+                        <i class="fas fa-sort sort-icon"></i>
+                    </th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for staff in staff_list %}
+                <tr>
+                    <td data-label="ID">
+                        <span class="id-badge">#{{ staff.staff_id }}</span>
+                    </td>
+                    <td data-label="Name">
+                        <div class="staff-info">
+                            <strong>{{ staff.first_name }} {{ staff.last_name }}</strong>
+                        </div>
+                    </td>
+                    <td data-label="Position">
+                        <span>{{ staff.position }}</span>
+                    </td>
+                    <td data-label="Type">
+                        <span class="staff-type-badge {{ staff.staff_type }}">
+                            {{ staff.staff_type }}
+                        </span>
+                    </td>
+                    <td data-label="Salary">
+                        <span class="salary-display">${{ "%.2f"|format(staff.salary) }}</span>
+                    </td>
+                    <td data-label="Contact">
+                        <div class="contact-info">
+                            <div><i class="fas fa-envelope"></i> {{ staff.email }}</div>
+                            <div><i class="fas fa-phone"></i> {{ staff.phone }}</div>
+                        </div>
+                    </td>
+                    <td class="actions" data-label="Actions">
+                        <div class="action-buttons">
+                            <button class="btn-icon view" onclick="viewStaffDetails({{ staff.staff_id }})"
+                                title="View Details">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn-icon edit"
+                                onclick="openEditForm({{ staff.staff_id }}, '{{ staff.staff_type }}')"
+                                title="Edit Staff">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-icon delete"
+                                onclick="openDeleteConfirm({{ staff.staff_id }}, '{{ staff.first_name }} {{ staff.last_name }}')"
+                                title="Delete Staff">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <button class="btn btn-primary" onclick="openAddForm()">
+            <i class="fas fa-plus"></i> Add Staff Member
+        </button>
+
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <h3>No Staff Found</h3>
+            <p>Start by adding your first staff member to the system.</p>
+            <button class="btn btn-primary" onclick="openAddForm()">
+                <i class="fas fa-plus"></i> Add First Staff Member
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal Overlay -->
+<div id="modalOverlay" class="modal-overlay"></div>
+
+<!-- Add Staff Modal -->
+<div id="addStaffModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-plus"></i> Add New Staff Member</h3>
+            <button class="close-btn" onclick="closeAddForm()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="POST" action="{{ url_for('add_staff') }}" id="addStaffForm">
+            <div class="modal-body">
+                <!-- Staff Type Selection -->
+                <div class="staff-type-selector">
+                    <label for="staff_type">
+                        <i class="fas fa-user-tag"></i>
+                        Staff Type <span class="required">*</span>
+                    </label>
+                    <select id="staff_type" name="staff_type" required onchange="toggleStaffTypeFields()">
+                        <option value="">Select Staff Type</option>
+                        <option value="worker">Worker</option>
+                        <option value="manager">Manager</option>
+                    </select>
+                </div>
+
+                <!-- Common Staff Fields -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="first_name">
+                            <i class="fas fa-user"></i>
+                            First Name <span class="required">*</span>
+                        </label>
+                        <input type="text" id="first_name" name="first_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="last_name">
+                            <i class="fas fa-user"></i>
+                            Last Name <span class="required">*</span>
+                        </label>
+                        <input type="text" id="last_name" name="last_name" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="position">
+                            <i class="fas fa-briefcase"></i>
+                            Position <span class="required">*</span>
+                        </label>
+                        <select id="position" name="position" required
+                            onchange="handlePositionChange(this, 'custom_position')">
+                            <option value="">Select Staff Type First</option>
+                        </select>
+                        <input type="text" id="custom_position" name="custom_position"
+                            placeholder="Enter custom position" style="display: none;">
+                    </div>
+                    <div class="form-group">
+                        <label for="salary">
+                            <i class="fas fa-dollar-sign"></i>
+                            Salary <span class="required">*</span>
+                        </label>
+                        <input type="number" id="salary" name="salary" step="0.01" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="email">
+                            <i class="fas fa-envelope"></i>
+                            Email <span class="required">*</span>
+                        </label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">
+                            <i class="fas fa-phone"></i>
+                            Phone <span class="required">*</span>
+                        </label>
+                        <input type="tel" id="phone" name="phone" required>
+                    </div>
+                </div>
+                
+                <!-- Worker-specific fields -->
+                <div id="workerFields" class="conditional-fields">
+                    <h4><i class="fas fa-user"></i> Worker Information</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="branch_id">
+                                <i class="fas fa-building"></i>
+                                Branch <span class="required">*</span>
+                            </label>
+                            <select id="branch_id" name="branch_id">
+                                <option value="">Select Branch</option>
+                                {% for branch in branches %}
+                                <option value="{{ branch.id }}">{{ branch.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="birth_date">
+                                <i class="fas fa-calendar"></i>
+                                Birth Date <span class="required">*</span>
+                            </label>
+                            <input type="date" id="birth_date" name="birth_date">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Manager-specific fields -->
+                <div id="managerFields" class="conditional-fields">
+                    <h4><i class="fas fa-user-tie"></i> Manager Information</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="since">
+                                <i class="fas fa-calendar-alt"></i>
+                                Manager Since <span class="required">*</span>
+                            </label>
+                            <input type="date" id="since" name="since">
+                        </div>
+                        <div class="form-group">
+                            <label for="password">
+                                <i class="fas fa-lock"></i>
+                                Password <span class="required">*</span>
+                            </label>
+                            <input type="password" id="password" name="password" minlength="8">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm_password">
+                            <i class="fas fa-lock"></i>
+                            Confirm Password <span class="required">*</span>
+                        </label>
+                        <input type="password" id="confirm_password" name="confirm_password" minlength="8">
+                    </div>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Add Staff Member
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="resetAddForm()">
+                    <i class="fas fa-undo"></i> Reset
+                </button>
+                <button type="button" class="btn btn-cancel" onclick="closeAddForm()">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Staff Modal -->
+<div id="editStaffModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-edit"></i> Edit Staff Member</h3>
+            <button class="close-btn" onclick="closeEditForm()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="POST" id="editStaffForm">
+            <input type="hidden" id="edit_staff_id" name="staff_id">
+            <div class="modal-body">
+                <!-- Common Staff Fields -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit_first_name">
+                            <i class="fas fa-user"></i>
+                            First Name <span class="required">*</span>
+                        </label>
+                        <input type="text" id="edit_first_name" name="first_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_last_name">
+                            <i class="fas fa-user"></i>
+                            Last Name <span class="required">*</span>
+                        </label>
+                        <input type="text" id="edit_last_name" name="last_name" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit_position">
+                            <i class="fas fa-briefcase"></i>
+                            Position <span class="required">*</span>
+                        </label>
+                        <select id="edit_position" name="position" required
+                            onchange="handlePositionChange(this, 'edit_custom_position')">
+                            <option value="">Select Position</option>
+                        </select>
+                        <input type="text" id="edit_custom_position" name="custom_position"
+                            placeholder="Enter custom position" style="display: none;">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_salary">
+                            <i class="fas fa-dollar-sign"></i>
+                            Salary <span class="required">*</span>
+                        </label>
+                        <input type="number" id="edit_salary" name="salary" step="0.01" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit_email">
+                            <i class="fas fa-envelope"></i>
+                            Email <span class="required">*</span>
+                        </label>
+                        <input type="email" id="edit_email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_phone">
+                            <i class="fas fa-phone"></i>
+                            Phone <span class="required">*</span>
+                        </label>
+                        <input type="tel" id="edit_phone" name="phone" required>
+                    </div>
+                </div>
+
+                <!-- Worker-specific fields -->
+                <div id="editWorkerFields" class="conditional-fields">
+                    <h4><i class="fas fa-user"></i> Worker Information</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="edit_branch_id">
+                                <i class="fas fa-building"></i>
+                                Branch <span class="required">*</span>
+                            </label>
+                            <select id="edit_branch_id" name="branch_id">
+                                <option value="">Select Branch</option>
+                                {% for branch in branches %}
+                                <option value="{{ branch.id }}">{{ branch.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit_birth_date">
+                                <i class="fas fa-calendar"></i>
+                                Birth Date <span class="required">*</span>
+                            </label>
+                            <input type="date" id="edit_birth_date" name="birth_date">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Manager-specific fields -->
+                <div id="editManagerFields" class="conditional-fields">
+                    <h4><i class="fas fa-user-tie"></i> Manager Information</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="edit_since">
+                                <i class="fas fa-calendar-alt"></i>
+                                Manager Since <span class="required">*</span>
+                            </label>
+                            <input type="date" id="edit_since" name="since">
+                        </div>
+                        <div class="form-group">
+                            <label for="edit_password">
+                                <i class="fas fa-lock"></i>
+                                New Password
+                            </label>
+                            <input type="password" id="edit_password" name="password" minlength="8">
+                            <small class="form-help">Leave blank to keep current password</small>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_confirm_password">
+                            <i class="fas fa-lock"></i>
+                            Confirm New Password
+                        </label>
+                        <input type="password" id="edit_confirm_password" name="confirm_password" minlength="8">
+                    </div>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Update Staff Member
+                </button>
+                <button type="button" class="btn btn-cancel" onclick="closeEditForm()">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content delete-modal">
+        <div class="modal-header">
+            <h3><i class="fas fa-exclamation-triangle"></i> Confirm Deletion</h3>
+            <button class="close-btn" onclick="closeDeleteConfirm()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="delete-warning">
+                <i class="fas fa-exclamation-triangle warning-icon"></i>
+                <p>Are you sure you want to delete staff member <strong id="deleteStaffName"></strong>?</p>
+                <p class="warning">This action cannot be undone and will permanently remove this staff member.</p>
+            </div>
+        </div>
+        <form method="POST" id="deleteForm">
+            <div class="form-actions">
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-trash"></i> Delete Staff Member
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="closeDeleteConfirm()">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Staff Details Modal -->
+<div id="staffDetailsModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-user"></i> Staff Details</h3>
+            <button class="close-btn" onclick="closeDetailsModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body" id="staffDetailsContent">
+            <!-- Details will be loaded here -->
+        </div>
+        <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeDetailsModal()">
+                <i class="fas fa-times"></i> Close
+            </button>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/staff.js') }}"></script>
+<script>
+// Add password validation for managers
+document.addEventListener('DOMContentLoaded', function() {
+    // Add form validation for password confirmation
+    const addForm = document.getElementById('addStaffForm');
+    const editForm = document.getElementById('editStaffForm');
+    
+    function validatePasswords(form) {
+        const password = form.querySelector('input[name="password"]');
+        const confirmPassword = form.querySelector('input[name="confirm_password"]');
+        
+        if (password && confirmPassword && password.value && confirmPassword.value) {
+            if (password.value !== confirmPassword.value) {
+                alert('Passwords do not match!');
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    addForm.addEventListener('submit', function(e) {
+        if (!validatePasswords(this)) {
+            e.preventDefault();
+        }
+    });
+    
+    editForm.addEventListener('submit', function(e) {
+        if (!validatePasswords(this)) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
+{% endblock %}
+{% endblock %}
